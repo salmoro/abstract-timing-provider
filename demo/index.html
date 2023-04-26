@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Abstract Timing Provider Demo</title>
+  </head>
+  <body>
+  <div style="display: flex; flex-direction: column;">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <label for="position-ctrl">Position</label>
+      <input id="position-ctrl" type="range" min="0" max="100" onchange="timingObject.update({position: Number(this.value)})" style="width: 200px">
+      <div id="position">0</div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <label for="velocity-ctrl">Velocity</label>
+      <input id="velocity-ctrl" type="range" min="0" max="5" onchange="timingObject.update({velocity: Number(this.value)})" style="width: 200px">
+      <div id="velocity">0</div>
+    </div>
+  </div>
+    <script type="module">
+      import {TimingObject} from 'timing-object';
+      import {AbstractTimingProvider} from "../lib";
+      import {FirebaseDatasource} from "../lib/datasources";
+
+      const params = new URLSearchParams(window.location.search);
+      const sessionId = params.get('session') ?? crypto.randomUUID();
+
+      if (params.get('session') === null) {
+        window.history.replaceState('', '', `${window.location.href}?session=${sessionId}`)
+      }
+
+      const provider = new AbstractTimingProvider(new FirebaseDatasource({
+        docPath: `timing-source/${sessionId}`,
+        firebase: {
+          apiKey: "AIzaSyB_ppk9it8hzR8AhprHYPM3dc9Z84rf7NI",
+          projectId: "to-poc",
+        }
+      }))
+
+      const timingObject = new TimingObject(provider, {range: [0, 100]})
+
+      window.timingObject = timingObject;
+
+      const positionCtrlEl = document.querySelector('#position-ctrl');
+      const velocityCtrlEl = document.querySelector('#velocity-ctrl');
+      const positionEl = document.querySelector('#position');
+      const velocityEl = document.querySelector('#velocity');
+
+      function updateUi() {
+        const {position, velocity} = timingObject.query();
+
+        positionEl.innerText = position.toFixed(2)
+        velocityEl.innerText = velocity;
+
+        if (positionCtrlEl.matches(':not(:active)')) {
+          positionCtrlEl.value = position;
+        }
+
+        if (velocityCtrlEl.matches(':not(:active)')) {
+          velocityCtrlEl.value = velocity;
+        }
+      }
+
+      timingObject.addEventListener('readystatechange', ()  => {
+        if (timingObject.readyState === 'open') {
+          timingObject.addEventListener('change', updateUi)
+          setInterval(() => updateUi(), 50)
+          updateUi()
+        }
+      })
+    </script>
+  </body>
+</html>
